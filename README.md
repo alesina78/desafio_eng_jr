@@ -65,6 +65,13 @@ Este projeto constrói a base de dados que torna essa decisão mais informada.
 
 ---
 
+## O que representa uma linha de cada tabela?
+* **Camada Bronze (`horse-colic.data` / `horse-colic.test`):** Cada linha representa o registro bruto original de um caso clínico de cólica equina coletado em campo (1989), contendo campos delimitados por espaço/vírgula com códigos clínicos e valores ausentes (`?`).
+* **Camada Silver (`equine_cases.parquet` / `clinical_measures.parquet`):** Cada linha representa um caso clínico validado e limpo de um cavalo, com tipagem corrigida, chaves primárias (`case_id`) geradas e semântica de desfechos traduzida.
+* **Camada Gold (`tachycardia_triage.parquet`, `surgical_decision.parquet`, etc.):** Cada linha representa uma agregação analítica por métricas de triagem, desfechos de sobrevivência ou faixas de frequência cardíaca para suporte à decisão veterinária.
+
+---
+
 ## Contratos de Dados — As 3 Regras Clínicas Críticas
 
 A camada Silver valida cada registro contra regras fisiológicas reais, não apenas tipos de dados:
@@ -171,6 +178,23 @@ Desafio1/
 └── requirements.txt
 
 ```
+
+---
+
+## 🤖 Relato de Interação com a IA (Erros e Correções)
+
+Como todo projeto assistido por IA, houve momentos em que a ferramenta assumiu premissas incorretas que exigiram validação técnica rigorosa e testes práticos:
+
+* **1. Divergência na Contagem de Registros (Quarentena):** 
+  * *O que a IA assumiu:* Que os 368 registros brutos passariam direto para as tabelas finais da Silver.
+  * *Como descobri testando:* Ao rodar o pipeline, notei que a Silver gerou 366 linhas em vez de 368. O relatório JSON (`quality_report.json`) revelou que 2 registros haviam sido isolados em quarentena por violarem os limites fisiológicos de dor e frequência cardíaca. Isso validou o motor de quarentena.
+* **2. Tratamento de Valores Nulos Mascarados na Fonte UCI (`?`):**
+  * *O que a IA assumiu:* Que colunas como `pulse` e `packed_cell_volume` eram puramente numéricas desde a leitura inicial.
+  * *Como descobri testando:* O DuckDB e os testes unitários quebraram com erros de conversão de tipo (`Type mismatch`). Identifiquei que a fonte original usa `?` para nulos, exigindo a conversão explícita com `pd.to_numeric(errors='coerce')` antes das validações do Pandera.
+* **3. Incompatibilidade de Tipos e Parâmetros Gráficos (Streamlit/Plotly):**
+  * *O que a IA assumiu:* Propriedades descontinuadas de layout (como o antigo `use_container_width`).
+  * *Como descobri testando:* O terminal exibiu avisos de depreciação e falhas visuais. Corrigi inspecionando os logs de execução e atualizando para os parâmetros modernos.
+
 
 ---
 
