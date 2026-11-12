@@ -92,14 +92,20 @@ Registros que violam qualquer regra são isolados em `data/silver/quarantine/` c
 
 ## Como executar
 
-Você pode rodar todo o pipeline de dados (testes + Bronze + Silver + Gold) e iniciar o painel interativo com um único comando:
+Você pode rodar todo o pipeline de dados (testes + Bronze + Silver + Gold) e iniciar o painel interativo de diferentes formas, dependendo da sua preferência:
 
+### Opção A: No Windows (Com duplo clique)
+Dê um duplo clique no arquivo **`executar.bat`** diretamente no Explorador de Arquivos do Windows. Ele ativará o ambiente virtual e rodará tudo automaticamente.
+
+### Opção B: Via Terminal (Comando unificado)
+No terminal com o ambiente virtual ativado:
 ```bash
 # Executa o pipeline completo com pausa para conferência e abre o dashboard
 python desafio_um.py
 ```
 
-Ou, se preferir executar as etapas de forma isolada manualmente:
+Opção C: Execução Manual Isolada (Passo a passo)
+Se preferir rodar cada etapa de forma isolada:
 
 Bash
 # 1. Executar testes unitários
@@ -126,39 +132,41 @@ Desafio1/
 │
 ├── data/
 │   ├── bronze/
-│   │   ├── horse-colic.data          # Dados brutos de treino (UCI)
-│   │   └── horse-colic.test          # Dados brutos de teste (UCI)
+│   │   ├── horse-colic.data            # Dados brutos de treino (UCI)
+│   │   └── horse-colic.test            # Dados brutos de teste (UCI)
 │   ├── silver/
-│   │   ├── schemas.py                # Contratos Pandera (regras fisiológicas)
-│   │   ├── validate.py               # Motor de quarentena (lazy=True)
-│   │   ├── quarantine/               # Registros rejeitados com _rejection_reason
-│   │   └── quality_reports/          # quality_report_YYYYMMDD.json por execução
+│   │   ├── schemas.py                  # Contratos Pandera (regras fisiológicas)
+│   │   ├── validate.py                 # Motor de quarentena (lazy=True)
+│   │   ├── quarantine/                 # Registros rejeitados com _rejection_reason
+│   │   └── quality_reports/            # quality_report_YYYYMMDD.json por execução
 │   └── gold/
-│       ├── 01_outcomes_distribution.sql   # Distribuição de desfechos clínicos
-│       ├── 02_survival_by_lesion_type.sql # Sobrevivência por tipo de lesão
-│       ├── 03_surgery_vs_outcome.sql      # Cirurgia × desfecho comparativo
-│       ├── 04_vital_signs_by_outcome.sql  # Sinais vitais agregados por desfecho
-│       └── 05_pain_level_analysis.sql     # Dor na triagem × resultado final
+│       ├── 01_outcomes_distribution.sql     # Distribuição de desfechos clínicos
+│       ├── 02_survival_by_lesion_type.sql   # Sobrevivência por tipo de lesão
+│       ├── 03_surgery_vs_outcome.sql        # Cirurgia × desfecho comparativo
+│       ├── 04_vital_signs_by_outcome.sql    # Sinais vitais agregados por desfecho
+│       └── 05_pain_level_analysis.sql       # Dor na triagem × resultado final
 │
-├── docs/                             # Documentação técnica e diagramas
+├── docs/                               # Documentação técnica e diagramas
 │
 ├── sql/
-│   └── gold/                         # Versão alternativa/versionada das queries Gold
+│   └── gold/                           # Versão alternativa/versionada das queries Gold
 │
 ├── src/
 │   ├── gold/
-│   │   └── build_gold.py             # Constrói tabelas Parquet via DuckDB
+│   │   └── build_gold.py               # Constrói tabelas Parquet via DuckDB
 │   ├── ingestion/
-│   │   └── download_uci_data.py      # Download automatizado do dataset UCI
+│   │   └── download_uci_data.py        # Download automatizado do dataset UCI
 │   └── transformations/
-│       └── process_silver.py         # Transformações e mapeamento Bronze → Silver
+│       └── process_silver.py           # Transformações e mapeamento Bronze → Silver
 │
 ├── tests/
 │   └── unit/
 │       └── test_silver_transformations.py  # Suíte pytest em memória
 │
-├── app.py                            # Cockpit Executivo (Streamlit + Plotly)
-├── Makefile                          # make pipeline — execução em 1 comando
+├── app.py                              # Cockpit Executivo (Streamlit + Plotly)
+├── desafio_um.py                       # Automação completa do pipeline (Python)
+├── executar.bat                        # Atalho para Windows (duplo clique)
+├── Makefile                            # Automação via make (Linux/macOS)
 ├── README.md
 └── requirements.txt
 
