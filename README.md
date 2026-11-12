@@ -174,10 +174,19 @@ Desafio1/
 ├── desafio_um.py                       # Automação completa do pipeline (Python)
 ├── executar.bat                        # Atalho para Windows (duplo clique)
 ├── Makefile                            # Automação via make (Linux/macOS)
+├── pipeline_medallion_guia.html        # Guia visual interativo e simulador do fluxo
 ├── README.md
 └── requirements.txt
 
+
 ```
+
+---
+
+> 📊 **Guia Interativo de Arquitetura e Execução:** 
+> Explore o fluxo completo do pipeline, as regras de cada camada e um simulador de falhas/testes acessando o guia visual:
+> * **Online (via navegador):** [Abrir Guia Interativo Medallion](https://github.com/alesina78/desafio_eng_jr/blob/master/pipeline_medallion_guia.html)
+> * **Localmente:** Dê um duplo clique no arquivo `pipeline_medallion_guia.html` na raiz deste repositório.
 
 ---
 
