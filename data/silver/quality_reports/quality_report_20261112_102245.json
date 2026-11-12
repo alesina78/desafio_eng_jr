@@ -1,0 +1,11 @@
+{
+    "timestamp": "2026-11-12 10:22:45",
+    "tables": [
+        {
+            "table_name": "equine_cases_and_clinical",
+            "total_input": 368,
+            "passed": 366,
+            "rejected": 2
+        }
+    ]
+}

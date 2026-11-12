@@ -1,4 +1,4 @@
-.PHONY: all bronze silver gold test app
+.PHONY: all bronze silver gold test app pipeline
 
 bronze:
 	python src/ingestion/download_uci_data.py

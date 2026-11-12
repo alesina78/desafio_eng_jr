@@ -92,16 +92,30 @@ Registros que violam qualquer regra são isolados em `data/silver/quarantine/` c
 
 ## Como executar
 
+Você pode rodar todo o pipeline de dados (testes + Bronze + Silver + Gold) e iniciar o painel interativo com um único comando:
+
 ```bash
-# 1. Instalar dependências
-pip install -r requirements.txt
-
-# 2. Pipeline completo: testes + Bronze + Silver + Gold
-make pipeline
-
-# 3. Dashboard interativo
-streamlit run app.py
+# Executa o pipeline completo com pausa para conferência e abre o dashboard
+python desafio_um.py
 ```
+
+Ou, se preferir executar as etapas de forma isolada manualmente:
+
+Bash
+# 1. Executar testes unitários
+pytest tests/ -v --tb=short
+
+# 2. Ingestão da Camada Bronze
+python src/ingestion/download_uci_data.py
+
+# 3. Processamento e validação da Camada Silver
+python src/transformations/process_silver.py
+
+# 4. Construção das tabelas da Camada Gold
+python src/gold/build_gold.py
+
+# 5. Iniciar o Cockpit Executivo
+streamlit run app.py
 
 ---
 
