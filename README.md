@@ -1,143 +1,178 @@
-# 🐎 GATE4 Equine Health Intelligence
+# 🐴 Observatório de Saúde Equina
 
-> **Plataforma de Engenharia de Dados & Analytics** aplicada ao monitoramento clínico e à gestão de saúde em centros equestres.  
-> Pipeline end-to-end: ingestão de dados brutos (UCI Horse Colic) → camadas Medallion (Bronze/Silver/Gold) → validações com Pytest → Analytics em SQL Puro.
+> **Pipeline de Engenharia de Dados aplicado à saúde clínica equina.**  
+> Da ingestão bruta ao cockpit executivo — com contratos de dados, quarentena rastreável e suporte à decisão veterinária.
 
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Pandas](https://img.shields.io/badge/Pandas-2.x-150458?style=flat-square&logo=pandas&logoColor=white)](https://pandas.pydata.org/)
+[![Pandera](https://img.shields.io/badge/Data%20Contracts-Pandera-orange?style=flat-square)](https://pandera.readthedocs.io/)
+[![DuckDB](https://img.shields.io/badge/DuckDB-Analytics-yellow?style=flat-square&logo=duckdb&logoColor=black)](https://duckdb.org/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-App-FF4B4B?style=flat-square&logo=streamlit&logoColor=white)](https://streamlit.io/)
 [![Pytest](https://img.shields.io/badge/Testes-pytest-0A9EDC?style=flat-square&logo=pytest&logoColor=white)](https://pytest.org/)
-[![Status](https://img.shields.io/badge/Status-Ativo-2ea44f?style=flat-square)]()
+[![Status](https://img.shields.io/badge/Status-Produção%20Local-2ea44f?style=flat-square)]()
 
 ---
 
-## 🎯 O Problema de Negócio
+## O Problema
 
-Centros equestres, haras e clínicas veterinárias lidam frequentemente com dados fragmentados de ocorrências de saúde animal, registros de exames e desfechos de tratamentos. O resultado é a dificuldade de identificar padrões clínicos e avaliar o sucesso de intervenções médicas em casos críticos.
+Um cavalo com cólica aguda tem entre **1 e 4 horas** para a decisão cirúrgica ser tomada.
 
-Este projeto constrói a **espinha dorsal de dados** para análise de atendimentos veterinários de cólica equina — aplicando engenharia de dados moderna sobre dados reais de saúde animal para apoiar gestores e profissionais veterinários na tomada de decisão baseada em evidências.
+Depois dessa janela, a mortalidade sobe de ~25% para mais de 60%.
 
-**Perguntas que o pipeline responde:**
-- Qual é a taxa de sobrevivência dos animais conforme o tipo de lesão diagnosticada?
-- Qual é o impacto da intervenção cirúrgica no desfecho de casos de cólica severa?
-- Como o nível de dor e os sinais vitais iniciais se correlacionam com a taxa de mortalidade e eutanásia?
-- Qual é o perfil clínico associado a cada desfecho hospitalar (`lived`, `died`, `euthanized`)?
+Na maioria dos centros equestres, esse diagnóstico depende da experiência individual do veterinário de plantão — sem histórico estruturado, sem rastreabilidade de sinais vitais e sem referência epidemiológica para comparação.
+
+Este projeto constrói a base de dados que torna essa decisão mais informada.
 
 ---
 
-## 🏗️ Arquitetura Medallion
+## O que este pipeline responde
 
-```
+| Pergunta clínica | Onde está a resposta |
+|---|---|
+| A frequência cardíaca na admissão já indica risco cirúrgico? | Gold → `tachycardia_triage` → Zona 2 do cockpit |
+| Qual o histórico de sobrevivência com e sem cirurgia? | Gold → `surgical_decision` → Zona 3 do cockpit |
+| Os dados coletados atendem padrões fisiológicos ou têm anomalias? | Silver → `quality_reports/` → Zona 4 do cockpit |
+
+---
+
+## Arquitetura
+*Fonte: UCI Horse Colic Dataset (368 casos clínicos reais, 1989)*
+
+```text
 ┌─────────────────────────────────────────────────────────────┐
-│               GATE4 Equine Health Intelligence              │
-├───────────────────┬───────────────────┬─────────────────────┤
-│     BRONZE        │      SILVER       │        GOLD         │
-│  Arquivos brutos  │  Dados limpos &   │ Indicadores SQL     │
-│  (.data / .test)  │   Normalizados    │  independentes      │
-└───────────────────┴───────────────────┴─────────────────────┘
+│  BRONZE — Ingestão imutável                                 │
+│  horse-colic.data + horse-colic.test → armazenamento bruto  │
+└───────────────────────┬─────────────────────────────────────┘
+                        │
+                        ▼
+┌─────────────────────────────────────────────────────────────┐
+│  SILVER — Contrato de Dados (Pandera)                       │
+│  Limpeza · Tipagem · Tradução semântica UCI                 │
+│  Aprovados → equine_cases + clinical_measures (Parquet)     │
+│  Rejeitados → quarantine/ com _rejection_reason             │
+│  Saída → quality_report_YYYYMMDD.json                       │
+└───────────────────────┬─────────────────────────────────────┘
+                        │
+                        ▼
+┌─────────────────────────────────────────────────────────────┐
+│  GOLD — Indicadores Clínicos (DuckDB + SQL)                 │
+│  tachycardia_triage · surgical_decision · pain_analysis     │
+└───────────────────────┬─────────────────────────────────────┘
+                        │
+                        ▼
+         Cockpit Executivo (Streamlit + Plotly)
 ```
-
-**Modelo de Dados Relacional:** Os registros brutos são estruturados em duas tabelas centrais na camada Silver, garantindo integridade referencial por meio de um `JOIN` relacional limpo baseado na chave `case_id`.
 
 ---
 
-## 📦 Estruturação das Tabelas (Camada Silver)
+## Contratos de Dados — As 3 Regras Clínicas Críticas
 
-| Tabela | Granularidade | Descrição das Atributos Principais |
+A camada Silver valida cada registro contra regras fisiológicas reais, não apenas tipos de dados:
+
+| Variável | Regra no Contrato | Fundamento Clínico |
 |---|---|---|
-| **`equine_cases`** | Uma linha por atendimento clínico | `case_id` (PK), `hospital_number`, `age`, `surgery`, `lesion_type`, `surgical_lesion`, `outcome` |
-| **`clinical_measures`** | Uma linha de medição por atendimento | `case_id` (FK), `rectal_temperature`, `pulse`, `respiratory_rate`, `mucous_membranes`, `capillary_refill_time`, `pain`, `peristalsis`, `abdominal_distension` |
+| `pulse` | 20–300 bpm · Alerta acima de 60 | FC > 60 bpm = limiar de indicação cirúrgica |
+| `packed_cell_volume` | 20–75% · Alerta acima de 50% | PCV elevado = hemoconcentração / choque iminente |
+| `pain` | Validação dupla: código UCI (1–5) → semântica (`alert` … `continuous_severe_pain`) | Scores 4–5 correlacionam com 3× mais indicações cirúrgicas |
+
+Registros que violam qualquer regra são isolados em `data/silver/quarantine/` com o motivo exato da falha — rastreabilidade completa a cada execução.
 
 ---
 
-## 📊 Indicadores da Camada Gold (Arquivos `.sql` Independentes)
+## Cockpit Executivo
 
-Cada indicador analítico é gerado diretamente por um arquivo SQL dedicado na camada de consumo:
-
-1. **`01_outcomes_distribution.sql`** — Distribuição percentual dos desfechos clínicos (sobreviveu, morreu, eutanásia).
-2. **`02_survival_by_lesion_type.sql`** — Taxa de sobrevivência cruzada por tipo de lesão diagnosticada.
-3. **`03_surgery_vs_outcome.sql`** — Análise comparativa de desfechos entre casos que exigiram cirurgia e tratamento conservador.
-4. **`04_vital_signs_by_outcome.sql`** — Agregação e variação de sinais vitais críticos (como pulso e temperatura) agrupados por desfecho.
-5. **`05_pain_level_analysis.sql`** — Correlação entre o nível de dor registrado na triagem e o resultado final do atendimento.
-
----
-
-## 🧪 Testes Automatizados (Pytest)
-
-O projeto conta com uma suíte de testes unitários desenvolvida em `pytest`, simulando DataFrames e estruturas de dados em memória para validar as regras de transformação, tipagem e integridade referencial **sem abrir o banco de dados do projeto**, atendendo rigorosamente aos critérios acadêmicos do desafio.
-
-```bash
-pytest tests/unit/
+```text
+├── Zona 1 ── KPIs: Mortalidade Geral · Taxa Cirúrgica · FC Crítica ─────────┐
+├── Zona 2 ── Triagem por FC: semáforo clínico (verde → vermelho) ────────────┤
+├── Zona 3 ── Perfil Cirúrgico + Nota de viés de seleção ─────────────────────┤
+└── Zona 4 ── Observabilidade: quality_report.json do último run ─────────────┘
 ```
 
 ---
 
-## ▶️ Como Rodar o Projeto do Zero
-
-### Pré-requisitos
-* Python 3.10+ instalado.
-* Git instalado.
-
-### Passo a passo no terminal:
+## Como executar
 
 ```bash
-# 1. Clonar o repositório
-git clone https://github.com/alesina78/gate4-equine-health.git
-cd gate4-equine-health
-
-# 2. Criar e ativar o ambiente virtual
-python -m venv .venv
-# Git Bash:
-source .venv/Scripts/activate
-# PowerShell:
-# .\.venv\Scripts\activate
-
-# 3. Instalar dependências
+# 1. Instalar dependências
 pip install -r requirements.txt
 
-# 4. Executar os testes unitários
-pytest tests/unit/
+# 2. Pipeline completo: testes + Bronze + Silver + Gold
+make pipeline
+
+# 3. Dashboard interativo
+streamlit run app.py
 ```
 
 ---
 
-## 📁 Estrutura do Repositório
+## Estrutura do repositório
 
 ```
-gate4-equine-health/
+Desafio1/
 │
 ├── data/
-│   ├── bronze/          # Arquivos brutos originais (.data / .test)
-│   ├── silver/          # Dados tratados, tipados e separados em tabelas
-│   └── gold/            # Tabelas e visões analíticas finais
+│   ├── bronze/
+│   │   ├── horse-colic.data          # Dados brutos de treino (UCI)
+│   │   └── horse-colic.test          # Dados brutos de teste (UCI)
+│   ├── silver/
+│   │   ├── schemas.py                # Contratos Pandera (regras fisiológicas)
+│   │   ├── validate.py               # Motor de quarentena (lazy=True)
+│   │   ├── quarantine/               # Registros rejeitados com _rejection_reason
+│   │   └── quality_reports/          # quality_report_YYYYMMDD.json por execução
+│   └── gold/
+│       ├── 01_outcomes_distribution.sql   # Distribuição de desfechos clínicos
+│       ├── 02_survival_by_lesion_type.sql # Sobrevivência por tipo de lesão
+│       ├── 03_surgery_vs_outcome.sql      # Cirurgia × desfecho comparativo
+│       ├── 04_vital_signs_by_outcome.sql  # Sinais vitais agregados por desfecho
+│       └── 05_pain_level_analysis.sql     # Dor na triagem × resultado final
 │
-├── src/
-│   ├── ingestion/       # Scripts de extração e salvamento em Bronze
-│   ├── transformations/ # Lógicas de limpeza, tipagem e normalização (Silver)
-│   └── database/        # Configuração de conexão e persistência local
+├── docs/                             # Documentação técnica e diagramas
 │
 ├── sql/
-│   └── gold/            # Arquivos .sql independentes para cada indicador
+│   └── gold/                         # Versão alternativa/versionada das queries Gold
+│
+├── src/
+│   ├── gold/
+│   │   └── build_gold.py             # Constrói tabelas Parquet via DuckDB
+│   ├── ingestion/
+│   │   └── download_uci_data.py      # Download automatizado do dataset UCI
+│   └── transformations/
+│       └── process_silver.py         # Transformações e mapeamento Bronze → Silver
 │
 ├── tests/
-│   └── unit/            # Testes unitários com pytest (dados em memória)
+│   └── unit/
+│       └── test_silver_transformations.py  # Suíte pytest em memória
 │
-├── docs/                # Documentação técnica e dicionário de dados
-│
-├── .gitignore
-├── requirements.txt
-└── README.md
+├── app.py                            # Cockpit Executivo (Streamlit + Plotly)
+├── Makefile                          # make pipeline — execução em 1 comando
+├── README.md
+└── requirements.txt
+
 ```
 
 ---
 
-## 🤖 Seção de Registro de IA
+## Testes
 
-*(Espaço reservado para documentar os momentos em que a IA cometeu suposições incorretas, desvios de escopo ou falhas de lógica durante o desenvolvimento, detalhando a conferência de linhas e as correções aplicadas pelo autor).*
+```bash
+pytest tests/unit/ -v
+```
+*Suíte unitária em memória — sem dependências externas, sem banco de dados.*
 
 ---
 
-## 👤 Autor
+## Limitações e próximos passos
+
+Este projeto não é um modelo preditivo. É um sistema de apoio à decisão baseado em evidência histórica, com as limitações que isso implica:
+
+* **Dataset de 1989 com 368 casos** — não representa distribuições clínicas atuais.
+* **Variáveis com até 29% de nulos** na fonte original — tratados e documentados, não ignorados.
+* **Comparação cirúrgica sujeita a viés de seleção** (casos mais graves são operados) — anotado no cockpit.
+* **Próximo passo natural:** integração com dados longitudinais de um centro equestre real.
+
+---
+
+## Autor
 
 **Alessandro Lesina Giordano**  
 Senior Data Engineer & Analytics Specialist | 25+ anos em TI Corporativa  
